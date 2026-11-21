@@ -20,9 +20,10 @@ public class AnularMatricula implements Task {
     @Override
     @Step("{0} anula la matricula #id")
     public <T extends Actor> void performAs(T actor) {
+        String token = actor.recall("accessToken");
         actor.attemptsTo(
                 Patch.to("/api/matriculas/{id}/anular")
-                        .with((req -> req.pathParam("id", id)))
+                        .with(req -> req.header("Authorization", "Bearer " + token).pathParam("id", id))
         );
     }
 }
