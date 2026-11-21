@@ -350,3 +350,43 @@ given().auth().oauth2(token)
 ```
 
 En Screenplay, la task de login guarda el token con `actor.remember("token", ...)` y las demás lo envían con `.with(req -> req.auth().oauth2(token))`.
+
+---
+
+## Resultados y Sustentación — Evaluación Final (D = 1)
+
+* **Estudiante:** Isaac Junior Flores Esquivel
+* **Código:** `I202508621`
+* **Dígito asignado (D):** `1`
+* **Alumno asignado (P1 y P2):** `i202610001` (Ana Torres, promedio `18.0`, descuento `20%`)
+* **Curso asignado (P1):** `PI5620` (Proyecto Integrador, `6` créditos)
+* **Método de pago (P1):** `TARJETA`
+
+### Pregunta 1 — Cálculo de Cotización y Regla `LIMITE_CREDITOS`
+
+| Concepto | Regla / Cálculo | Valor |
+| :--- | :--- | :--- |
+| **Créditos (`PI5620`)** | Catálogo del curso | `6` |
+| **Precio por crédito** | Tarifa base | `S/ 120.00` |
+| **Subtotal** | `6 × 120.0` | `S/ 720.00` |
+| **Descuento aplicado** | Promedio `18.0 >= 17.0` → `20%` | `20%` (`S/ 144.00`) |
+| **Total a pagar** | `720.0 - 144.0` | **`S/ 576.00`** |
+
+* **¿Qué regla produce el error `422 LIMITE_CREDITOS`?** Tras matricularse en `PI5620` (`6` créditos), la alumna `i202610001` cotiza `PS5511, QA5517, DM5512, TS5514, SA5516, BD5410` (`3 + 3 + 4 + 4 + 4 + 4 = 22` créditos). La carga acumulada alcanza `6 + 22 = 28` créditos, superando el máximo permitido de `24` créditos por periodo.
+* **¿Por qué no lo detiene antes otra validación?** El endpoint de cotización (`POST /api/matriculas/cotizacion`) solo verifica existencia y tope de `24` créditos; a diferencia del registro (`POST /api/matriculas`), no ejecuta validaciones de cruce de horarios, vacantes, deudas ni prerrequisitos.
+
+### Pregunta 2 — Sustentación de Seguridad de Sesión
+
+* **Reutilización de `refreshToken` (Escenario 1):** Al detectar el uso de un `refreshToken` ya revocado (`401 REFRESH_REUTILIZADO`), el servicio aplica una medida defensiva ante posible robo de sesión y revoca **todas** las sesiones activas del usuario (`sesiones.revocarTodas`), invalidando también el `accessToken` recién emitido (`401 TOKEN_INVALIDO` al consultar `/api/auth/perfil`).
+* **Bloqueo por intentos fallidos (Escenario 3):** Al quinto intento fallido la cuenta queda bloqueada durante 15 minutos (`423 CUENTA_BLOQUEADA`). En `AuthService.login()`, la verificación `u.bloqueado()` se ejecuta antes de validar la contraseña con `BCrypt`, por lo que incluso ingresando la clave correcta el acceso es rechazado mientras dure el bloqueo.
+
+### Pregunta 3 — Cálculo de Historial Ponderado y Decimal `12.5`
+
+La alumna Rosa Medina (`i202610005`) tiene aprobados previamente `LP5401` (`4` créditos, nota `15.0`) y `AS5402` (`3` créditos, nota `16.0`), sumando `7` créditos aprobados y `108.0` puntos ponderados. Al calificar `PI5620` (`6` créditos, nota mínima aprobatoria `13.0`):
+
+| Fila | Nota `PI5620` | Condición | Créditos Aprobados | Cálculo Promedio Ponderado | Resultado |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **1 (`10 + D`)** | `11` | `DESAPROBADO` | `4 + 3 + 0 = 7` | `(4×15 + 3×16 + 6×11) / (4 + 3 + 6) = 174 / 13` | **`13.38`** |
+| **2 (`12,5`)** | `12,5` | `DESAPROBADO` | `4 + 3 + 0 = 7` | `(4×15 + 3×16 + 6×12.5) / (4 + 3 + 6) = 183 / 13` | **`14.08`** |
+
+* **¿Qué ocurre al escribir `12,5` como `12.5` y cuál es la causa?** Cucumber lanza un error de conversión de parámetro (`CucumberExpressionException` al parsear `{double}`), porque el archivo `.feature` declara `# language: es` y Cucumber aplica la configuración regional (locale) del español, donde el separador decimal válido es la coma (`,`) y no el punto (`.`).
